@@ -41,6 +41,85 @@ int byteIndex = 0;
 
 byte byteArray[100][64];
 
+void grid_eye_read()
+{
+  amg.readPixels(pixels, (uint8_t)AMG88xx_PIXEL_ARRAY_SIZE);
+
+  String mqtt_data_string = "";
+
+  for (int i = 0; i < AMG88xx_PIXEL_ARRAY_SIZE; i++) {
+    mqtt_data_string += String(pixels[i]) + ",";
+  }
+  Serial.println();
+
+  char mqtt_data[mqtt_data_string.length()];
+
+  mqtt_data_string.toCharArray(mqtt_data, mqtt_data_string.length());
+  //  mqtt_data_string.toCharArray(mqtt_data, 80);
+
+  memcpy(byteArray[byteIndex], pixels, 64);
+
+  //    byte* byteArray[byteIndex];
+  //    byteArray[byteIndex] = (byte*)pixels;
+
+  //    grid_eye_vector.push_back(byteArray[byteIndex]);
+
+  unsigned int arraySize = sizeof(byteArray[byteIndex]);
+  bool published = false;
+
+  Serial.print("Recording Data with size ");
+  Serial.print(sizeof(byteArray));
+  Serial.print(" : ");
+  Serial.println(mqtt_data_string.length());
+
+  Serial.print("[");
+  Serial.print(grid_eye_vector.size());
+  Serial.println("]");
+  //    published  = client.publish(mqtt_topic, byteArray, sizeof(pixels));
+
+  //    if (published) Serial.println("Data Published");
+  //    else Serial.println("Unable to publish the data");
+
+  //  Serial.println(mqtt_data);
+  //delay a 100 mili-second
+  recorded  = true;
+  record_count++;
+  byteIndex++;
+}
+
+void grid_eye_publish()
+{
+
+  Serial.println("-------------------------");
+  Serial.print("Number of records: ");
+  Serial.println(record_count);
+  Serial.println("-------------------------");
+  delay(500);
+
+  int valid_count = 0;
+  Serial.println("Sending Data over mqtt");
+
+  //      for (int vector_index = 0; vector_index < grid_eye_vector.size(); vector_index++)
+  for (int i = 0; i < record_count; i++)
+  {
+    //        published  = client.publish(mqtt_topic, grid_eye_vector[vector_index], sizeof(pixels));
+    published = client.publish(mqtt_topic, byteArray[i], sizeof(pixels));
+    if (published) Serial.println("Published");
+    else Serial.println("Unable to publish");
+
+    valid_count++;
+  }
+
+  if (record_count == valid_count) Serial.println("BullsEye Behbee");
+  else Serial.println("Some serious issues with count");
+
+  delay(500);
+  record_count = 0;
+  recorded = false;
+  grid_eye_vector.clear();
+  byteIndex = 0;
+}
+
 void setupWiFi()
 {
   delay(10);
@@ -119,82 +198,14 @@ void loop() {
 
   if (readGridEye == 't')
   {
-    amg.readPixels(pixels, (uint8_t)AMG88xx_PIXEL_ARRAY_SIZE);
-
-    String mqtt_data_string = "";
-
-    for (int i = 0; i < AMG88xx_PIXEL_ARRAY_SIZE; i++) {
-      mqtt_data_string += String(pixels[i]) + ",";
-    }
-    Serial.println();
-
-    char mqtt_data[mqtt_data_string.length()];
-
-    mqtt_data_string.toCharArray(mqtt_data, mqtt_data_string.length());
-    //  mqtt_data_string.toCharArray(mqtt_data, 80);
-
-    memcpy(byteArray[byteIndex], pixels, 64);
-
-    //    byte* byteArray[byteIndex];
-    //    byteArray[byteIndex] = (byte*)pixels;
-
-    //    grid_eye_vector.push_back(byteArray[byteIndex]);
-
-    unsigned int arraySize = sizeof(byteArray[byteIndex]);
-    bool published = false;
-
-    Serial.print("Recording Data with size ");
-    Serial.print(sizeof(byteArray));
-    Serial.print(" : ");
-    Serial.println(mqtt_data_string.length());
-
-    Serial.print("[");
-    Serial.print(grid_eye_vector.size());
-    Serial.println("]");
-    //    published  = client.publish(mqtt_topic, byteArray, sizeof(pixels));
-
-    //    if (published) Serial.println("Data Published");
-    //    else Serial.println("Unable to publish the data");
-
-    //  Serial.println(mqtt_data);
-    //delay a 100 mili-second
-    recorded  = true;
-    record_count++;
-    byteIndex++;
+    grid_eye_read();
   }
   else
   {
     Serial.println("Stop Reading[put 't' for the read");
     if (recorded)
     {
-      Serial.println("-------------------------");
-      Serial.print("Number of records: ");
-      Serial.println(record_count);
-      Serial.println("-------------------------");
-      delay(500);
-
-      int valid_count = 0;
-      Serial.println("Sending Data over mqtt");
-
-      //      for (int vector_index = 0; vector_index < grid_eye_vector.size(); vector_index++)
-      for (int i = 0; i < record_count; i++)
-      {
-        //        published  = client.publish(mqtt_topic, grid_eye_vector[vector_index], sizeof(pixels));
-        published = client.publish(mqtt_topic, byteArray[i], sizeof(pixels));
-        if (published) Serial.println("Published");
-        else Serial.println("Unable to publish");
-
-        valid_count++;
-      }
-
-      if (record_count == valid_count) Serial.println("BullsEye Behbee");
-      else Serial.println("Some serious issues with count");
-
-      delay(500);
-      record_count = 0;
-      recorded = false;
-      grid_eye_vector.clear();
-      byteIndex = 0;
+      grid_eye_publish();
     }
   }
   delay(100);
